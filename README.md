@@ -28,7 +28,7 @@
 
 - [原理对比：Windows vs macOS](#-原理对比windows-vs-macos)
 - [快速开始](#-快速开始)
-- [手动编译与安装](#️-手动编译与安装)
+- [手动编译与安装（面向二次开发）](#️-手动编译与安装面向二次开发)
 - [使用方法](#-使用方法)
 - [配置说明](#-配置说明)
 - [日志查看](#-日志查看)
@@ -66,7 +66,9 @@
 - 已安装 Xcode Command Line Tools：`xcode-select --install`
 - 已启动本地代理软件（Clash/Mihomo/V2Ray 等），默认端口 `7890`
 
-### 一键安装
+### 一键安装（🌟 推荐，全自动开箱即用）
+
+> **适合绝大多数普通用户与开发者**：脚本将全自动检测编译器、编译动态库、交互式配置代理参数并完成端口测试，最后在 `~/.zshrc` 中注册全局快捷命令。
 
 ```bash
 git clone https://github.com/telnet402/antigravity-proxy-mac.git
@@ -75,24 +77,24 @@ chmod +x install.sh
 ./install.sh
 ```
 
-安装过程会：
-1. 自动编译 arm64 dylib
-2. 安装到 `~/Library/Application Support/antigravity-proxy/`
-3. 创建 `agy-proxy` 快捷命令
-4. 引导配置代理参数
+安装过程会自动完成：
+1. 自动编译 arm64 / universal dylib
+2. 安装组件至 `~/Library/Application Support/antigravity-proxy/`
+3. 在 `~/.zshrc` 中注册 `agy-proxy`、`agy-ide`、`agy-app` 全局快捷命令
+4. 交互式引导配置代理协议、IP 与端口（并自动校验端口连通性）
 
 ### 启动 Antigravity 与 Antigravity IDE
 
 ```bash
 # 启动 Antigravity IDE（默认并自动注入代理）
 agy-proxy
-# 或显式指定
-agy-proxy ide
+# 或显式指定 IDE
+agy-ide
 
 # 启动轻量版 Antigravity 应用
-agy-proxy app
+agy-app
 
-# 支持直接传递自定义文件或目录
+# 支持直接传递自定义文件或工程目录
 agy-proxy /path/to/project
 ```
 
@@ -108,7 +110,11 @@ agy-proxy /path/to/project
 
 ---
 
-## 🛠️ 手动编译与安装
+## 🛠️ 手动编译与安装（面向二次开发）
+
+> [!NOTE]
+> 该方式适合需要自定义编译参数或对 C Hook 源码进行二次开发的高级用户。
+> **注意**：手动 `make install` 仅编译并拷贝动态库与默认配置文件，**不会**进行交互式代理配置，也**不会**自动在 `~/.zshrc` 中注册全局别名。日常使用推荐直接使用上方的 [一键安装](#一键安装-推荐全自动开箱即用)。
 
 ### 编译 arm64 版本
 
@@ -134,38 +140,66 @@ make install
 
 ## 📝 使用方法
 
-### 基本用法
+安装程序会在 `~/.zshrc` 中自动注册快捷别名，你可以直接在任意终端路径下执行：
+
+### 1. 启动桌面客户端（最常用）
 
 ```bash
-# 自动查找 Antigravity.app 并启动
-./launch.sh
+# 方式 A：默认启动 Antigravity IDE（并全套注入代理）
+agy-proxy
 
-# 指定 Antigravity 路径
-./launch.sh /Applications/Antigravity.app/Contents/MacOS/Antigravity
+# 方式 B：显式启动 Antigravity IDE
+agy-ide
 
-# 通过环境变量覆盖代理配置（无需修改 config.json）
-AGY_PROXY_TYPE=socks5 AGY_PROXY_HOST=127.0.0.1 AGY_PROXY_PORT=7891 ./launch.sh
+# 方式 C：启动轻量版 Antigravity 应用
+agy-app
+
+# 方式 D：直接使用 Antigravity IDE 打开指定工程目录或文件
+agy-proxy ~/Code/my-project
+agy-ide .
 ```
 
-### 通过 agy CLI 使用
+### 2. 临时通过环境变量覆盖代理配置
 
-如果你使用 Antigravity CLI（`agy` 命令），同样支持注入：
+无需修改 `config.json`，在命令前加上环境变量即可临时指定端口或协议：
 
 ```bash
+# 临时使用 7891 端口启动
+AGY_PROXY_PORT=7891 agy-proxy
+
+# 临时切换为 HTTP 代理
+AGY_PROXY_TYPE=http AGY_PROXY_PORT=8080 agy-proxy
+```
+
+### 3. 通过 Antigravity CLI 命令行终端使用
+
+如果你在终端中使用 Antigravity 官方命令行工具（`agy` 命令），同样可以注入底层代理 Hook：
+
+```bash
+# 临时注入启动 CLI
 DYLD_INSERT_LIBRARIES="${HOME}/Library/Application Support/antigravity-proxy/antigravity_proxy.dylib" \
 DYLD_FORCE_FLAT_NAMESPACE=1 \
 agy chat
 ```
 
-或者在 `~/.zshrc` / `~/.bashrc` 中添加别名：
+或者在 `~/.zshrc` 中添加专属的 CLI 别名（避免与 IDE 启动器 `agy-proxy` 冲突）：
 
 ```bash
 # 添加到 ~/.zshrc
 export AGY_PROXY_LIB="${HOME}/Library/Application Support/antigravity-proxy/antigravity_proxy.dylib"
-alias agy-proxy='DYLD_INSERT_LIBRARIES="${AGY_PROXY_LIB}" DYLD_FORCE_FLAT_NAMESPACE=1 agy'
+alias agy-cli='DYLD_INSERT_LIBRARIES="${AGY_PROXY_LIB}" DYLD_FORCE_FLAT_NAMESPACE=1 agy'
+
+# 之后直接运行
+agy-cli chat
 ```
 
-之后直接用 `agy-proxy chat` 替代 `agy chat`。
+### 4. 手动/脚本调用启动器
+
+如果终端尚未刷新环境变量或未引入别名，可直接通过绝对路径执行安装好的启动器：
+
+```bash
+"${HOME}/Library/Application Support/antigravity-proxy/launch.sh"
+```
 
 ---
 
@@ -203,15 +237,46 @@ alias agy-proxy='DYLD_INSERT_LIBRARIES="${AGY_PROXY_LIB}" DYLD_FORCE_FLAT_NAMESP
 
 ## 📋 日志查看
 
-```bash
-# 查看今天的日志
-tail -f ~/Library/Logs/antigravity-proxy/proxy-$(date +%Y%m%d).log
+运行过程中包含两层日志：**终端启动控制台输出** 与 **底层 Hook 网络流量日志**。
 
-# 查看所有日志
-ls ~/Library/Logs/antigravity-proxy/
+### 1. 终端启动控制台输出（日常观察）
+
+运行 `agy-proxy`、`agy-ide` 或 `agy-app` 时，终端会实时输出应用接管与配置注入状态：
+
+```text
+[成功] 目标应用: Antigravity IDE (/Applications/Antigravity IDE.app/Contents/MacOS/Electron)
+[信息] 代理地址: socks5://127.0.0.1:7890
+[成功] 代理端口连通性测试通过 ✓
+[信息] 检测到 Antigravity IDE 设置文件，同步注入代理规则...
+[成功] 已成功配置 IDE 设置: http.proxy -> socks5://127.0.0.1:7890
+
+======================================================
+ 正在为 Antigravity IDE 注入代理并启动...
+======================================================
+
+[成功] 已成功在后台启动 Antigravity IDE（代理已接管）
 ```
 
-### 关键日志含义
+| 控制台输出内容 | 阶段与含义 |
+|--------------|-----------|
+| `目标应用: ...` | 自动识别到本地已安装的 Antigravity 或 Antigravity IDE 路径 |
+| `代理端口连通性测试通过 ✓` | 已成功连通本地代理软件（如 Clash/Mihomo 的 7890 端口） |
+| `已成功配置 IDE 设置: http.proxy -> ...` | 自动将代理规则无损同步注入至 VS Code/IDE 的 `settings.json` |
+| `已成功在后台启动 ...（代理已接管）` | 应用已携完整代理参数与环境变量在独立后台成功启动 |
+
+### 2. 底层 Hook 网络流量日志（排查底层连接时查看）
+
+如果你需要追踪 dylib 在底层拦截的每一个 socket 握手与连接，可查看持久化日志文件：
+
+```bash
+# 查看今天的底层网络日志
+tail -f ~/Library/Logs/antigravity-proxy/proxy-$(date +%Y%m%d).log
+
+# 查看所有历史日志文件
+ls -lh ~/Library/Logs/antigravity-proxy/
+```
+
+#### 底层网络日志关键内容
 
 | 日志内容 | 含义 | 状态 |
 |---------|------|------|
