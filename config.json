@@ -1,0 +1,17 @@
+{
+  "proxy": {
+    "type": "socks5",
+    "host": "127.0.0.1",
+    "port": 7890
+  },
+  "enabled": true,
+  "log_level": 1,
+  "target_processes": [
+    "Antigravity",
+    "Antigravity IDE",
+    "Electron",
+    "language_server_macos_arm",
+    "language_server",
+    "node"
+  ]
+}

@@ -1,0 +1,15 @@
+# 编译产物
+output/
+
+# macOS
+.DS_Store
+*.dSYM/
+
+# 测试二进制
+test_inject
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
